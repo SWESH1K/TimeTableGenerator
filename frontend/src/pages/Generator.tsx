@@ -40,7 +40,8 @@ const Generator = () => {
 
     try {
       console.log("Sending data to API:", apiRequest); // Log what we're sending
-      const response = await axios.post("http://127.0.0.1:8000/api/generate_timetable/", apiRequest);
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+      const response = await axios.post(`${API_URL}/api/generate_timetable/`, apiRequest);
       setTimetable(response.data.time_table);
       console.log("Generated timetable:", response.data.time_table);
     } catch (err: any) {

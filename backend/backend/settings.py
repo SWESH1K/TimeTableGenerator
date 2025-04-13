@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-sy$7656ts-#apw$(cdtf2gmaoqhe(e50x5d$qsz-zno%ph4%x4
 # DEBUG = True
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ["timetablegenerator-gtds.onrender.com", "127.0.0.1", "localhost"]
+ALLOWED_HOSTS = ["https://timetablegenerator-gtds.onrender.com", "127.0.0.1", "localhost"]
 
 
 # Application definition
@@ -130,5 +130,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     "https://timetablegenerator-frontend.onrender.com",
+    "https://timetablegenerator-frontend.onrender.com/generator",
     "http://localhost:8080"
 ]

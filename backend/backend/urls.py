@@ -19,6 +19,8 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 from django.conf.urls.static import static
 from django.conf import settings
+import os
+from .settings import BASE_DIR
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -27,4 +29,4 @@ urlpatterns = [
     # Serve the React frontend for all other routes
     path('', TemplateView.as_view(template_name='index.html')),
     path('<path:path>', TemplateView.as_view(template_name='index.html')),
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+] + static(settings.STATIC_URL, document_root=os.path.join(BASE_DIR, 'frontend_build/static'))

@@ -133,7 +133,7 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-    "https://timetablegenerator.onrender.com",
+    "https://timetablegenerator-zklt.onrender.com/",
     "http://localhost:3000"
 ]
 

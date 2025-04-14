@@ -60,14 +60,20 @@ def generate_timetable(request):
 
         # Restructure the timetable
         structured_timetable = {}
-        for day in days:
-            structured_timetable[day] = {}
-            for time_slot in time_slots:
-                slot_data = timetable_df[(timetable_df["Day"] == day) & (timetable_df["Time Slot"] == time_slot)]
-                if not slot_data.empty:
-                    structured_timetable[day][time_slot] = slot_data.to_dict(orient="records")
-                else:
-                    structured_timetable[day][time_slot] = []
+        for section in sections:
+            structured_timetable[section] = {}
+            for day in days:
+                structured_timetable[section][day] = {}
+                for time_slot in time_slots:
+                    slot_data = timetable_df[
+                        (timetable_df["Section"] == section) &
+                        (timetable_df["Day"] == day) &
+                        (timetable_df["Time Slot"] == time_slot)
+                    ]
+                    if not slot_data.empty:
+                        structured_timetable[section][day][time_slot] = slot_data.to_dict(orient="records")
+                    else:
+                        structured_timetable[section][day][time_slot] = []
 
         return Response({"message": "Timetable generated successfully", "time_table": structured_timetable}, status=status.HTTP_200_OK)
 

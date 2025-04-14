@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     outDir: '../backend/frontend_build',
     emptyOutDir: true,
     // Ensure assets are correctly referenced
-    assetsDir: 'assets',
+    assetsDir: 'static/assets',
   },
   plugins: [
     react(),

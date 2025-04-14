@@ -123,9 +123,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'frontend_build/assets'),
-]
+# STATICFILES_DIRS = [
+#     os.path.join(BASE_DIR, 'frontend_build/assets'),
+# ]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -133,8 +133,8 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-    "https://timetablegenerator-zklt.onrender.com/",
-    "http://localhost:3000"
+    "https://timetablegenerator-zklt.onrender.com",
+    "http://localhost:3000",
 ]
 
 STORAGES = {

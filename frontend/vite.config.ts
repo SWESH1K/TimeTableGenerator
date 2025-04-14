@@ -9,6 +9,13 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  build: {
+    // Set output directory to the Django frontend_build folder
+    outDir: '../backend/frontend_build',
+    emptyOutDir: true,
+    // Ensure assets are correctly referenced
+    assetsDir: 'assets',
+  },
   plugins: [
     react(),
     mode === 'development' &&

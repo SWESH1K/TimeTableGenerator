@@ -1,0 +1,14 @@
+services:
+  # A web service for the combined app
+  - type: web
+    name: timetablegenerator
+    env: python
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: cd backend && gunicorn backend.wsgi:application --log-file -
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: NODE_VERSION
+        value: 18.0.0
+      - key: DJANGO_DEBUG
+        value: False

@@ -40,9 +40,7 @@ const Generator = () => {
 
     try {
       console.log("Sending data to API:", apiRequest); // Log what we're sending
-      // const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-      const API_URL = "https://timetablegenerator-gtds.onrender.com"
-      const response = await axios.post(`${API_URL}/api/generate_timetable/`, apiRequest);
+      const response = await axios.post(`/api/generate_timetable/`, apiRequest);
       setTimetable(response.data.time_table);
       console.log("Generated timetable:", response.data.time_table);
     } catch (err: any) {

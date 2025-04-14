@@ -27,8 +27,7 @@ SECRET_KEY = 'django-insecure-sy$7656ts-#apw$(cdtf2gmaoqhe(e50x5d$qsz-zno%ph4%x4
 # DEBUG = True
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ["https://timetablegenerator-gtds.onrender.com", "127.0.0.1", "localhost"]
-
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -45,9 +44,11 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', 
     'django.middleware.security.SecurityMiddleware',
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
+    # 'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -60,7 +61,7 @@ ROOT_URLCONF = 'backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'frontend_build')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -122,6 +123,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'frontend_build/assets'),
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -129,6 +133,13 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-    "https://timetablegenerator-frontend.onrender.com",
-    "http://localhost:8080"
+    "https://timetablegenerator.onrender.com",
+    "http://localhost:3000"
 ]
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+

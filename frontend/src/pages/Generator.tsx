@@ -5,11 +5,17 @@ import TimetableDisplay from "@/components/TimetableDisplay";
 import { TimetableFormData, Timetable } from "@/utils/timetableUtils";
 import axios from "axios";
 
+// Extended type for multiple sections
+type SectionTimetables = {
+  [section: string]: Timetable;
+};
+
 const Generator = () => {
-  const [timetable, setTimetable] = useState<Timetable | null>(null);
+  const [timetables, setTimetables] = useState<SectionTimetables | null>(null);
   const [formData, setFormData] = useState<TimetableFormData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   const handleGenerateTimetable = async (data: TimetableFormData) => {
     // Create a properly formatted API request
@@ -40,15 +46,27 @@ const Generator = () => {
 
     try {
       console.log("Sending data to API:", apiRequest); // Log what we're sending
-      const response = await axios.post(`/api/generate_timetable/`, apiRequest);
-      setTimetable(response.data.time_table);
-      console.log("Generated timetable:", response.data.time_table);
+      const response = await axios.post(`http://localhost:8000/api/generate_timetable/`, apiRequest);
+      const sectionTimetables = response.data.time_table;
+      setTimetables(sectionTimetables);
+      
+      // Set the first section as active by default
+      if (sectionTimetables && Object.keys(sectionTimetables).length > 0) {
+        setActiveSection(Object.keys(sectionTimetables)[0]);
+      }
+      
+      console.log("Generated timetables:", sectionTimetables);
     } catch (err: any) {
       console.error("API Error:", err.response?.data || err.message);
       setError(`Failed to generate timetable: ${err.response?.data?.error || err.message}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle section change
+  const handleSectionChange = (section: string) => {
+    setActiveSection(section);
   };
 
   return (
@@ -66,10 +84,36 @@ const Generator = () => {
           {loading && <p className="text-center mt-4">Generating timetable...</p>}
           {error && <p className="text-center text-red-500 mt-4">{error}</p>}
           
-          {timetable && formData && (
+          {timetables && formData && activeSection && (
             <div className="mt-12">
+              {/* Section Selector */}
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold mb-2">Select Section:</h2>
+                <div className="flex gap-2">
+                  {Object.keys(timetables).map(section => (
+                    <button
+                      key={section}
+                      onClick={() => handleSectionChange(section)}
+                      className={`px-4 py-2 rounded-md ${
+                        activeSection === section
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary hover:bg-secondary/80"
+                      }`}
+                    >
+                      Section {section}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Section heading */}
+              <h2 className="text-2xl font-bold mb-4 text-center">
+                Timetable for Section {activeSection}
+              </h2>
+              
+              {/* Display the timetable for the active section */}
               <TimetableDisplay 
-                timetable={timetable}
+                timetable={timetables[activeSection]}
                 weekdays={formData.weekdays}
                 timeSlots={formData.timeSlots}
               />

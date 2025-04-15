@@ -6,15 +6,15 @@ export const PREDEFINED_COURSES = {
   "FSD": { name: "Full Stack Development", L: 0, T: 0, P: 6, S: 4 },
   "MP": { name: "Mathematical Programming", L: 2, T: 2, P: 0, S: 0 },
   "DAA": { name: "Design and Analysis of Algorithms", L: 3, T: 0, P: 2, S: 0 },
-  "SIL": { name: "Software Integration Lab", L: 0, T: 0, P: 0, S: 4 }
+  "SIL": { name: "Social Immersive Learning", L: 0, T: 0, P: 0, S: 4 }
 };
 
 // Simplified list of professors - no direct mapping to courses
 export const PREDEFINED_PROFESSORS = [
-  "Dr Purushotam",
-  "Dr Hitesh",
-  "Dr Madhukar",
-  "Dr Sandeep",
+  "Dr Purushottam Komaravalli",
+  "Dr Hitesh Tekchandani",
+  "Dr Madhukar Rao",
+  "Dr Sandeep Chitreddy",
   "Dr Sudharshan Babu",
   "Dr Sukla Satapathy",
   "Dr P Vishala"

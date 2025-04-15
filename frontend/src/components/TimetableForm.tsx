@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { MinusCircle, PlusCircle, X, Sparkles } from "lucide-react";
+import { MinusCircle, PlusCircle, X, Sparkles, Check } from "lucide-react";
 import { PREDEFINED_COURSES, PREDEFINED_PROFESSORS } from "@/utils/sampleData";
 import {
   Select,
@@ -13,6 +13,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface TimetableFormProps {
   onGenerate: (data: TimetableFormData) => void;
@@ -25,8 +40,8 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
   const [professors, setProfessors] = useState<{ [course: string]: string }>({});
   const [ltps, setLtps] = useState<{ [course: string]: { L: number; T: number; P: number; S: number } }>({});
   
-  // Changed: Single section per course instead of multiple
-  const [courseSections, setCourseSections] = useState<{ [courseId: string]: string }>({});
+  // Changed: Track course assignments by index with multiple sections
+  const [courseIndexToSections, setCourseIndexToSections] = useState<{ [index: number]: string[] }>({});
   
   // Days and time slots
   const [selectedDays, setSelectedDays] = useState<string[]>([]);
@@ -46,39 +61,34 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
   const removeCourse = useCallback((index: number) => {
     setCourses(prev => {
       const newCourses = [...prev];
-      const removedCourse = newCourses[index];
       newCourses.splice(index, 1);
-      
-      // Also remove course from section mappings if it exists
-      if (removedCourse) {
-        setCourseSections(prev => {
-          const newMapping = { ...prev };
-          delete newMapping[removedCourse];
-          return newMapping;
-        });
-      }
-      
       return newCourses;
+    });
+    
+    // Remove section mapping for this course index
+    setCourseIndexToSections(prev => {
+      const newMapping = { ...prev };
+      delete newMapping[index];
+      
+      // Adjust indices for items after the removed one
+      const adjustedMapping: { [index: number]: string[] } = {};
+      Object.entries(newMapping).forEach(([idx, sections]) => {
+        const numIdx = parseInt(idx);
+        if (numIdx > index) {
+          adjustedMapping[numIdx - 1] = sections;
+        } else {
+          adjustedMapping[numIdx] = sections;
+        }
+      });
+      
+      return adjustedMapping;
     });
   }, []);
 
   const updateCourse = useCallback((index: number, courseId: string) => {
     setCourses(prev => {
-      const oldCourseId = prev[index];
       const newCourses = [...prev];
       newCourses[index] = courseId;
-      
-      // Update course-section mappings if changing an existing course
-      if (oldCourseId && courseSections[oldCourseId]) {
-        setCourseSections(prev => {
-          const newMapping = { ...prev };
-          // Transfer section mappings to the new course ID
-          newMapping[courseId] = newMapping[oldCourseId];
-          delete newMapping[oldCourseId];
-          return newMapping;
-        });
-      }
-      
       return newCourses;
     });
 
@@ -95,16 +105,26 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
         }
       }));
     }
-  }, [courseSections]);
+  }, []);
 
-  // Changed: Update to set a single section for a course
-  const setCourseSection = useCallback((courseId: string, sectionId: string) => {
-    if (!courseId) return;
-    
-    setCourseSections(prev => ({
-      ...prev,
-      [courseId]: sectionId
-    }));
+  // Changed: Toggle a section for a course by index
+  const toggleCourseSection = useCallback((index: number, sectionId: string) => {
+    setCourseIndexToSections(prev => {
+      const currentSections = prev[index] || [];
+      let newSections: string[];
+      
+      // Toggle the section
+      if (currentSections.includes(sectionId)) {
+        newSections = currentSections.filter(s => s !== sectionId);
+      } else {
+        newSections = [...currentSections, sectionId];
+      }
+      
+      return {
+        ...prev,
+        [index]: newSections
+      };
+    });
   }, []);
 
   // Professor management
@@ -127,12 +147,10 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
     setSections(prev => prev.filter((_, i) => i !== index));
     
     // Update all course-section mappings that use this section
-    setCourseSections(prev => {
+    setCourseIndexToSections(prev => {
       const newMapping = { ...prev };
-      Object.keys(newMapping).forEach(courseId => {
-        if (newMapping[courseId] === sectionToRemove) {
-          delete newMapping[courseId]; // Remove the mapping for this course
-        }
+      Object.entries(newMapping).forEach(([idx, sectionList]) => {
+        newMapping[parseInt(idx)] = sectionList.filter(s => s !== sectionToRemove);
       });
       return newMapping;
     });
@@ -148,11 +166,14 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
     });
     
     // Update all course-section mappings that use this section
-    setCourseSections(prev => {
+    setCourseIndexToSections(prev => {
       const newMapping = { ...prev };
-      Object.keys(newMapping).forEach(courseId => {
-        if (newMapping[courseId] === oldSectionId) {
-          newMapping[courseId] = value;
+      Object.entries(newMapping).forEach(([idx, sectionList]) => {
+        if (sectionList.includes(oldSectionId)) {
+          // Replace old section ID with new one
+          newMapping[parseInt(idx)] = sectionList.map(s => 
+            s === oldSectionId ? value : s
+          );
         }
       });
       return newMapping;
@@ -192,8 +213,15 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Filter out empty courses
-    const filteredCourses = courses.filter(course => course.trim() !== '');
+    // Filter out empty courses and get their indices
+    const validCourseIndices: number[] = [];
+    const filteredCourses: string[] = [];
+    courses.forEach((course, index) => {
+      if (course.trim() !== '') {
+        validCourseIndices.push(index);
+        filteredCourses.push(course);
+      }
+    });
     
     // Create courses by section mapping required by the API
     const coursesBySection: { [section: string]: string[] } = {};
@@ -204,16 +232,19 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
     });
     
     // Populate with course assignments based on mapping
-    filteredCourses.forEach(course => {
-      const assignedSection = courseSections[course];
+    validCourseIndices.forEach((originalIndex, currentIndex) => {
+      const course = filteredCourses[currentIndex];
+      const assignedSections = courseIndexToSections[originalIndex] || [];
       
-      // If course has a section assigned, add it only to that section
+      // If course has sections assigned, add it to those sections
       // Otherwise, as a fallback, add to the first section
-      const targetSection = assignedSection || sections[0];
+      const targetSections = assignedSections.length > 0 ? assignedSections : [sections[0]];
       
-      if (coursesBySection[targetSection]) {
-        coursesBySection[targetSection].push(course);
-      }
+      targetSections.forEach(section => {
+        if (coursesBySection[section]) {
+          coursesBySection[section].push(course);
+        }
+      });
     });
     
     // Create the form data
@@ -294,7 +325,7 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
             {/* Table header */}
             <div className="grid grid-cols-10 gap-4 mb-2 font-medium">
               <div className="col-span-6">Course</div>
-              <div className="col-span-3">Section</div>
+              <div className="col-span-3">Sections</div>
               <div className="col-span-1"></div>
             </div>
             
@@ -320,24 +351,46 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
                     </Select>
                   </div>
                   
-                  {/* Section selector - 3 cols */}
+                  {/* Multi-section selector - 3 cols */}
                   <div className="col-span-3">
                     {course && (
-                      <Select
-                        value={courseSections[course] || ""}
-                        onValueChange={(value) => setCourseSection(course, value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Assign section" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sections.map((section) => (
-                            <SelectItem key={section} value={section}>
-                              Section {section}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button 
+                            variant="outline" 
+                            role="combobox" 
+                            className="w-full justify-between"
+                          >
+                            {courseIndexToSections[courseIndex]?.length > 0 
+                              ? `${courseIndexToSections[courseIndex].length} sections selected`
+                              : "Assign to sections"}
+                            <PlusCircle className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0">
+                          <Command>
+                            <CommandInput placeholder="Search sections..." />
+                            <CommandList>
+                              <CommandEmpty>No sections found.</CommandEmpty>
+                              <CommandGroup>
+                                {sections.map((section) => {
+                                  const isSelected = courseIndexToSections[courseIndex]?.includes(section) || false;
+                                  return (
+                                    <CommandItem
+                                      key={section}
+                                      onSelect={() => toggleCourseSection(courseIndex, section)}
+                                      className="flex items-center justify-between"
+                                    >
+                                      <span>Section {section}</span>
+                                      {isSelected && <Check className="h-4 w-4" />}
+                                    </CommandItem>
+                                  );
+                                })}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     )}
                   </div>
                   
@@ -354,6 +407,25 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
                       <MinusCircle className="h-4 w-4" />
                     </Button>
                   </div>
+                  
+                  {/* Display selected sections below */}
+                  {courseIndexToSections[courseIndex]?.length > 0 && (
+                    <div className="col-span-9 flex flex-wrap gap-1 mt-1">
+                      {courseIndexToSections[courseIndex].map(section => (
+                        <Badge 
+                          key={section} 
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          Section {section}
+                          <X 
+                            className="h-3 w-3 cursor-pointer" 
+                            onClick={() => toggleCourseSection(courseIndex, section)}
+                          />
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -399,7 +471,6 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
                     <span className="w-28">{course}:</span>
                     <div className="flex gap-2 flex-1">
                       <div className="flex-1">
-                        {/* <Label className="text-xs">Lecture</Label> */}
                         <Input
                           type="number"
                           min="0"
@@ -408,7 +479,6 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
                         />
                       </div>
                       <div className="flex-1">
-                        {/* <Label className="text-xs">Tutorial</Label> */}
                         <Input
                           type="number"
                           min="0"
@@ -417,7 +487,6 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
                         />
                       </div>
                       <div className="flex-1">
-                        {/* <Label className="text-xs">Practical</Label> */}
                         <Input
                           type="number"
                           min="0"
@@ -426,7 +495,6 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
                         />
                       </div>
                       <div className="flex-1">
-                        {/* <Label className="text-xs">Skill</Label> */}
                         <Input
                           type="number"
                           min="0"
@@ -493,7 +561,7 @@ const TimetableForm = ({ onGenerate }: TimetableFormProps) => {
           </div>
           <div className="flex justify-center">
             <Button type="submit" className="w-auto">
-              <Sparkles className="h-5 w-5" />
+              <Sparkles className="h-5 w-5 mr-2" />
               Generate Timetable
             </Button>
           </div>

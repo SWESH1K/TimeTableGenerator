@@ -47,124 +47,117 @@ export const generateId = (): string => {
   return Math.random().toString(36).substring(2, 9);
 };
 
-// Function to export timetable to Excel
-export function exportToExcel(timetable: Timetable, weekdays: string[], timeSlots: TimeSlot[]): void {
-  // Dynamically import xlsx to avoid bundling issues
-  import('xlsx').then(XLSX => {
-    // Create a workbook
-    const wb = XLSX.utils.book_new();
-    
-    // Prepare the data for Excel
-    const excelData: any[][] = [];
-    
-    // Create header row
-    const headerRow = ["Day/Time"];
-    timeSlots.forEach(slot => {
-      headerRow.push(slot.id);
-    });
-    excelData.push(headerRow);
-    
-    // Add data rows
-    weekdays.forEach(day => {
-      const row: any[] = [day];
-      timeSlots.forEach(slot => {
-        const events = timetable[day]?.[slot.id] || [];
-        if (events.length > 0) {
-          const event = events[0]; // Take the first event
-          row.push(`${event.Course} (${event.Type})\n${event.Professor}`);
-        } else {
-          row.push("-");
-        }
-      });
-      excelData.push(row);
-    });
-    
-    // Create worksheet and add to workbook
-    const ws = XLSX.utils.aoa_to_sheet(excelData);
-    XLSX.utils.book_append_sheet(wb, ws, "Timetable");
-    
-    // Save the file
-    XLSX.writeFile(wb, "timetable.xlsx");
-  }).catch(error => {
-    console.error("Failed to export to Excel:", error);
-    alert("Failed to export to Excel. Please try again.");
-  });
-}
-
-// Function to export timetable to PNG
-export function exportToPNG(timetableElement: HTMLElement): void {
-  // Dynamically import html2canvas
-  import('html2canvas').then(html2canvas => {
-    const h2c = html2canvas.default;
-    h2c(timetableElement, {
-      backgroundColor: '#ffffff',
-      scale: 2, // Higher scale for better quality
-      logging: false,
-      useCORS: true
-    }).then(canvas => {
-      // Create download link
-      const link = document.createElement('a');
-      link.download = 'timetable.png';
-      link.href = canvas.toDataURL('image/png');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }).catch(error => {
-      console.error('Failed to export to PNG:', error);
-      alert('Failed to export to PNG. Please try again.');
-    });
-  }).catch(error => {
-    console.error('Failed to load html2canvas:', error);
-    alert('Failed to load image export library. Please try again.');
-  });
-}
-
-// Function to export timetable to PDF
-export function exportToPDF(timetable: Timetable, weekdays: string[], timeSlots: TimeSlot[]): void {
+// Function to export timetable to PDF - robust implementation
+export function exportToPDF(timetable: Timetable, weekdays: string[], timeSlots: TimeSlot[], section: string): void {
   // Dynamically import jspdf and jspdf-autotable
   Promise.all([
     import('jspdf'),
     import('jspdf-autotable')
   ]).then(([jsPDF, autoTable]) => {
-    const doc = new jsPDF.default();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text("Generated Timetable", 14, 22);
-    doc.setFontSize(12);
-    
-    // Prepare the data for PDF
-    const tableColumn = ["Day/Time", ...timeSlots.map(slot => slot.id)];
-    const tableRows: any[][] = [];
-    
-    weekdays.forEach(day => {
-      const row: any[] = [day];
-      timeSlots.forEach(slot => {
-        const events = timetable[day]?.[slot.id] || [];
-        if (events.length > 0) {
-          const event = events[0]; // Take the first event
-          row.push(`${event.Course} (${event.Type})`); // Removed professor name
-        } else {
-          row.push("-");
+    try {
+      const doc = new jsPDF.default({
+        orientation: timeSlots.length > 5 ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      // Add title with section name
+      doc.setFontSize(18);
+      doc.text(`Timetable for Section ${section}`, 14, 15);
+      doc.setFontSize(12);
+      
+      // Prepare the data for timetable
+      const tableColumn = ["Day/Time", ...timeSlots.map(slot => slot.id)];
+      const tableRows: any[][] = [];
+      
+      weekdays.forEach(day => {
+        const row: any[] = [day];
+        timeSlots.forEach(slot => {
+          const events = timetable[day]?.[slot.id] || [];
+          if (events.length > 0) {
+            const event = events[0];
+            // Remove professor name from the timetable cell
+            row.push(`${event.Course}\n(${event.Type})`);
+          } else {
+            row.push("-");
+          }
+        });
+        tableRows.push(row);
+      });
+
+      // Create the timetable
+      autoTable.default(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 20,
+        styles: { fontSize: 9, cellPadding: 2 },
+        columnStyles: { 0: { cellWidth: 20 } },
+        headStyles: { fillColor: [66, 66, 66] },
+        didDrawPage: function(data) {
+          // Add page number
+          doc.setFontSize(8);
+          doc.text(
+            `Page ${doc.getNumberOfPages()}`, 
+            data.settings.margin.left, 
+            doc.internal.pageSize.height - 5
+          );
         }
       });
-      tableRows.push(row);
-    });
-
-    // Create the table
-    autoTable.default(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 30,
-      styles: { fontSize: 10, cellPadding: 3 },
-      columnStyles: { 0: { cellWidth: 30 } },
-      headStyles: { fillColor: [66, 66, 66] }
-    });
-    
-    // Save the PDF
-    doc.save("timetable.pdf");
+      
+      // Get table end position to know where to start the next table
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      
+      // Add title for professor mapping table
+      doc.setFontSize(14);
+      doc.text("Professors Names", 14, finalY);
+      
+      // Get unique course-professor pairs from this section's timetable
+      const courseProfessorMap = new Map<string, Set<string>>();
+      
+      // Extract all course-professor pairs from the timetable
+      Object.values(timetable).forEach(daySlots => {
+        Object.values(daySlots).forEach(events => {
+          events.forEach(event => {
+            if (!courseProfessorMap.has(event.Professor)) {
+              courseProfessorMap.set(event.Professor, new Set());
+            }
+            courseProfessorMap.get(event.Professor)?.add(event.Course);
+          });
+        });
+      });
+      
+      // Prepare data for professor mapping table
+      const profTableHeader = ["Professor", "Courses"];
+      const profTableRows = Array.from(courseProfessorMap.entries()).map(([professor, courses]) => 
+        [professor, Array.from(courses).join(", ")]
+      );
+      
+      // Add professor mapping table
+      autoTable.default(doc, {
+        head: [profTableHeader],
+        body: profTableRows,
+        startY: finalY + 5,
+        styles: { fontSize: 10, cellPadding: 3 },
+        headStyles: { fillColor: [66, 66, 66] }
+      });
+      
+      // Add footer with generation time
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text(
+        `Generated: ${new Date().toLocaleString()}`, 
+        14, 
+        doc.internal.pageSize.height - 5
+      );
+      
+      // Save the PDF with section name
+      doc.save(`timetable_section_${section}.pdf`);
+    } catch (error) {
+      console.error("PDF Generation Error:", error);
+      alert("There was an error generating your PDF. Please try again.");
+    }
   }).catch(error => {
-    console.error("Failed to export to PDF:", error);
-    alert("Failed to export to PDF. Please try again.");
+    console.error("Failed to load PDF libraries:", error);
+    alert("Failed to load required libraries for PDF generation. Please check your connection and try again.");
   });
 }

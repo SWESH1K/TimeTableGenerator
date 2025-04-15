@@ -1,130 +1,139 @@
 import { useState, useRef } from "react";
-import { Download, FileSpreadsheet, FileText, Image } from "lucide-react";
+import { Card, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Timetable, TimeSlot, exportToExcel, exportToPDF, exportToPNG } from "@/utils/timetableUtils";
+import { 
+  Table, 
+  TableBody,
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { FileText } from "lucide-react";
+import { Timetable, TimeSlot, exportToPDF } from "@/utils/timetableUtils";
 
 interface TimetableDisplayProps {
   timetable: Timetable;
   weekdays: string[];
   timeSlots: TimeSlot[];
+  section: string; // Add section parameter
 }
 
-const TimetableDisplay = ({ timetable, weekdays = [], timeSlots = [] }: TimetableDisplayProps) => {
-  const [exportFormat, setExportFormat] = useState<"excel" | "pdf" | "png">("excel");
+const TimetableDisplay = ({ timetable, weekdays = [], timeSlots = [], section }: TimetableDisplayProps) => {
+  const [exporting, setExporting] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   
-  console.log("Timetable in display:", timetable);
-  console.log("Weekdays:", weekdays);
-  console.log("TimeSlots:", timeSlots);
-
-  const handleExport = () => {
-    if (exportFormat === "excel") {
-      exportToExcel(timetable, weekdays, timeSlots);
-    } else if (exportFormat === "pdf") {
-      exportToPDF(timetable, weekdays, timeSlots);
-    } else if (exportFormat === "png" && tableRef.current) {
-      exportToPNG(tableRef.current);
+  const handleExportPdf = () => {
+    setExporting(true);
+    try {
+      exportToPDF(timetable, weekdays, timeSlots, section);
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      alert("There was an error generating the PDF. Please try again.");
+    } finally {
+      setExporting(false);
     }
   };
-
+  
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Generated Timetable</CardTitle>
-        <CardDescription>
-          Your timetable has been generated based on your inputs.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <div className="min-w-full" ref={tableRef}>
-          <table className="w-full border-collapse">
-            <thead>
-              <tr>
-                <th className="p-2 border bg-muted text-left">Day/Time</th>
-                {timeSlots.map(slot => (
-                  <th key={slot.id} className="p-2 border bg-muted text-center">
-                    {slot.id} {/* Just display the time slot ID */}
-                  </th>
+      <CardContent className="pt-6">
+        <div className="mb-4 flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold">Generated Timetable</CardTitle>
+          <div className="text-muted-foreground text-sm">
+            Your timetable has been generated based on your inputs.
+          </div>
+        </div>
+        
+        <div ref={tableRef} className="overflow-auto">
+          <Table className="border-collapse border border-border">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="border border-border font-bold text-center bg-muted">Day/Time</TableHead>
+                {timeSlots.map((slot) => (
+                  <TableHead 
+                    key={slot.id}
+                    className="border border-border font-bold text-center bg-muted min-w-[120px]"
+                  >
+                    {slot.id}
+                  </TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {weekdays.map(day => (
-                <tr key={day}>
-                  <td className="p-2 border font-medium">{day}</td>
-                  {timeSlots.map(slot => {
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {weekdays.map((day) => (
+                <TableRow key={day}>
+                  <TableCell className="font-medium border border-border bg-muted/50">{day}</TableCell>
+                  {timeSlots.map((slot) => {
                     const events = timetable[day]?.[slot.id] || [];
-                    // Get only the first event for each cell
-                    const event = events.length > 0 ? events[0] : null;
-                    
                     return (
-                      <td key={`${day}-${slot.id}`} className="p-2 border align-top">
-                        {event ? (
-                          <div className="p-1 rounded bg-primary/10">
-                            <div className="font-semibold">{event.Course} ({event.Type})</div>
-                            <div className="text-xs text-muted-foreground">{event.Professor}</div>
+                      <TableCell key={slot.id} className="border border-border text-center">
+                        {events.length > 0 ? (
+                          <div className="flex flex-col gap-1">
+                            <div className="font-semibold">{events[0].Course} ({events[0].Type})</div>
+                            {/* <div className="text-xs">{events[0].Type}</div> */}
+                            <div className="text-xs text-muted-foreground">{events[0].Professor}</div>
                           </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </td>
+                        ) : "-"}
+                      </TableCell>
                     );
                   })}
-                </tr>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
+
+          {/* Professor Table */}
+          <div className="mt-8 mb-4">
+            <h3 className="text-lg font-semibold mb-3">Professors Names</h3>
+            <Table className="border-collapse border border-border">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="border border-border font-bold bg-muted">Professor</TableHead>
+                  <TableHead className="border border-border font-bold bg-muted">Courses</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(() => {
+                  // Get unique course-professor pairs from this section's timetable
+                  const courseProfessorMap = new Map<string, Set<string>>();
+                  
+                  // Extract all course-professor pairs from the timetable
+                  Object.values(timetable).forEach(daySlots => {
+                    Object.values(daySlots).forEach(events => {
+                      events.forEach(event => {
+                        if (!courseProfessorMap.has(event.Professor)) {
+                          courseProfessorMap.set(event.Professor, new Set());
+                        }
+                        courseProfessorMap.get(event.Professor)?.add(event.Course);
+                      });
+                    });
+                  });
+
+                  return Array.from(courseProfessorMap.entries()).map(([professor, courses], index) => (
+                    <TableRow key={index}>
+                      <TableCell className="border border-border">{professor}</TableCell>
+                      <TableCell className="border border-border">
+                        {Array.from(courses).join(", ")}
+                      </TableCell>
+                    </TableRow>
+                  ));
+                })()}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <Select
-            value={exportFormat}
-            onValueChange={(value) => setExportFormat(value as "excel" | "pdf" | "png")}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Select format" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="excel">
-                <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-4 w-4" />
-                  <span>Excel</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="pdf">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  <span>PDF</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="png">
-                <div className="flex items-center gap-2">
-                  <Image className="h-4 w-4" />
-                  <span>PNG</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" /> Download
-          </Button>
-        </div>
+      <CardFooter className="justify-end gap-2">
+        <Button 
+          variant="default" 
+          size="sm" 
+          onClick={handleExportPdf}
+          disabled={exporting}
+        >
+          <FileText className="h-4 w-4 mr-2" />
+          Download PDF
+        </Button>
       </CardFooter>
     </Card>
   );

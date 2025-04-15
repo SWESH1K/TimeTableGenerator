@@ -46,7 +46,7 @@ const Generator = () => {
 
     try {
       console.log("Sending data to API:", apiRequest); // Log what we're sending
-      const response = await axios.post(`http://localhost:8000/api/generate_timetable/`, apiRequest);
+      const response = await axios.post(`/api/generate_timetable/`, apiRequest);
       const sectionTimetables = response.data.time_table;
       setTimetables(sectionTimetables);
       

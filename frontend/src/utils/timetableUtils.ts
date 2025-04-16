@@ -49,6 +49,14 @@ export const generateId = (): string => {
 
 // Function to export timetable to PDF - robust implementation
 export function exportToPDF(timetable: Timetable, weekdays: string[], timeSlots: TimeSlot[], section: string): void {
+  // Sort time slots to ensure T1 to T8 order if they aren't already sorted
+  const sortedTimeSlots = [...timeSlots].sort((a, b) => {
+    // Extract numbers from time slot ids (e.g., "T1" -> 1)
+    const aNum = parseInt(a.id.replace(/\D/g, ''));
+    const bNum = parseInt(b.id.replace(/\D/g, ''));
+    return aNum - bNum;
+  });
+  
   // Dynamically import jspdf and jspdf-autotable
   Promise.all([
     import('jspdf'),
@@ -67,12 +75,12 @@ export function exportToPDF(timetable: Timetable, weekdays: string[], timeSlots:
       doc.setFontSize(12);
       
       // Prepare the data for timetable
-      const tableColumn = ["Day/Time", ...timeSlots.map(slot => slot.id)];
+      const tableColumn = ["Day/Time", ...sortedTimeSlots.map(slot => slot.id)];
       const tableRows: any[][] = [];
       
       weekdays.forEach(day => {
         const row: any[] = [day];
-        timeSlots.forEach(slot => {
+        sortedTimeSlots.forEach(slot => {
           const events = timetable[day]?.[slot.id] || [];
           if (events.length > 0) {
             const event = events[0];
@@ -90,46 +98,47 @@ export function exportToPDF(timetable: Timetable, weekdays: string[], timeSlots:
         head: [tableColumn],
         body: tableRows,
         startY: 20,
-        styles: { fontSize: 9, cellPadding: 2 },
-        columnStyles: { 0: { cellWidth: 20 } },
-        headStyles: { fillColor: [66, 66, 66] },
-        didDrawPage: function(data) {
-          // Add page number
-          doc.setFontSize(8);
-          doc.text(
-            `Page ${doc.getNumberOfPages()}`, 
-            data.settings.margin.left, 
-            doc.internal.pageSize.height - 5
-          );
-        }
+        styles: { 
+          fontSize: 9,
+          cellPadding: 2,
+          halign: 'center', // Center text horizontally
+          valign: 'middle'  // Center text vertically
+        },
+        columnStyles: { 
+          0: { cellWidth: 20, halign: 'left' } // Keep first column (days) left-aligned
+        },
+        headStyles: { 
+          fillColor: [66, 66, 66],
+          halign: 'center'
+        },
       });
       
       // Get table end position to know where to start the next table
       const finalY = (doc as any).lastAutoTable.finalY + 10;
-      
+
       // Add title for professor mapping table
       doc.setFontSize(14);
       doc.text("Professors Names", 14, finalY);
-      
-      // Get unique course-professor pairs from this section's timetable
-      const courseProfessorMap = new Map<string, Set<string>>();
+
+      // Get unique course-professor pairs organized by course
+      const courseToProf = new Map<string, Set<string>>();
       
       // Extract all course-professor pairs from the timetable
       Object.values(timetable).forEach(daySlots => {
         Object.values(daySlots).forEach(events => {
           events.forEach(event => {
-            if (!courseProfessorMap.has(event.Professor)) {
-              courseProfessorMap.set(event.Professor, new Set());
+            if (!courseToProf.has(event.Course)) {
+              courseToProf.set(event.Course, new Set());
             }
-            courseProfessorMap.get(event.Professor)?.add(event.Course);
+            courseToProf.get(event.Course)?.add(event.Professor);
           });
         });
       });
       
-      // Prepare data for professor mapping table
-      const profTableHeader = ["Professor", "Courses"];
-      const profTableRows = Array.from(courseProfessorMap.entries()).map(([professor, courses]) => 
-        [professor, Array.from(courses).join(", ")]
+      // Prepare data for professor mapping table with swapped columns
+      const profTableHeader = ["Courses", "Professor"];
+      const profTableRows = Array.from(courseToProf.entries()).map(([course, professors]) => 
+        [course, Array.from(professors).join(", ")]
       );
       
       // Add professor mapping table
@@ -137,18 +146,44 @@ export function exportToPDF(timetable: Timetable, weekdays: string[], timeSlots:
         head: [profTableHeader],
         body: profTableRows,
         startY: finalY + 5,
-        styles: { fontSize: 10, cellPadding: 3 },
-        headStyles: { fillColor: [66, 66, 66] }
+        styles: { 
+          fontSize: 10, 
+          cellPadding: 3,
+          // halign: 'center',
+          // valign: 'middle'
+        },
+        // columnStyles: {
+        //   0: { halign: 'center' }, // Center course names
+        //   1: { halign: 'center' }  // Center professor names
+        // },
+        headStyles: { 
+          fillColor: [66, 66, 66],
+          // halign: 'center'
+        }
       });
       
-      // Add footer with generation time
+      // Add branded footer
+      const pageWidth = doc.internal.pageSize.getWidth();
+      
+      // First part of the text in regular styling
       doc.setFontSize(8);
       doc.setTextColor(100, 100, 100);
-      doc.text(
-        `Generated: ${new Date().toLocaleString()}`, 
-        14, 
-        doc.internal.pageSize.height - 5
-      );
+      const regularText = "generated by ";
+      const regularTextWidth = doc.getStringUnitWidth(regularText) * 8 / doc.internal.scaleFactor;
+      
+      // Position for the regular text (right aligned, with space for the branded text)
+      const brandedText = "TimeTableGen";
+      const brandedTextWidth = doc.getStringUnitWidth(brandedText) * 10 / doc.internal.scaleFactor; // Larger font
+      const totalWidth = regularTextWidth + brandedTextWidth;
+      const startX = pageWidth - totalWidth - 10; // 10mm margin from right
+      
+      // Add the regular text part
+      doc.text(regularText, startX, doc.internal.pageSize.height - 10);
+      
+      // Add the branded text part with special styling
+      doc.setTextColor(128, 90, 213); // Purple color
+      doc.setFontSize(10);  // Larger font size
+      doc.text(brandedText, startX + regularTextWidth, doc.internal.pageSize.height - 10);
       
       // Save the PDF with section name
       doc.save(`timetable_section_${section}.pdf`);

@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardFooter, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -23,10 +23,20 @@ const TimetableDisplay = ({ timetable, weekdays = [], timeSlots = [], section }:
   const [exporting, setExporting] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
   
+  // Sort time slots to ensure T1 to T8 order
+  const sortedTimeSlots = useMemo(() => {
+    return [...timeSlots].sort((a, b) => {
+      // Extract numbers from time slot ids (e.g., "T1" -> 1)
+      const aNum = parseInt(a.id.replace(/\D/g, ''));
+      const bNum = parseInt(b.id.replace(/\D/g, ''));
+      return aNum - bNum;
+    });
+  }, [timeSlots]);
+  
   const handleExportPdf = () => {
     setExporting(true);
     try {
-      exportToPDF(timetable, weekdays, timeSlots, section);
+      exportToPDF(timetable, weekdays, sortedTimeSlots, section);
     } catch (error) {
       console.error("PDF Export Error:", error);
       alert("There was an error generating the PDF. Please try again.");
@@ -46,14 +56,15 @@ const TimetableDisplay = ({ timetable, weekdays = [], timeSlots = [], section }:
         </div>
         
         <div ref={tableRef} className="overflow-auto">
-          <Table className="border-collapse border border-border">
+          <Table className="border-collapse border border-border w-full table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="border border-border font-bold text-center bg-muted">Day/Time</TableHead>
-                {timeSlots.map((slot) => (
+                <TableHead className="border border-border font-bold text-center bg-muted w-24">Day/Time</TableHead>
+                {sortedTimeSlots.map((slot) => (
                   <TableHead 
                     key={slot.id}
-                    className="border border-border font-bold text-center bg-muted min-w-[120px]"
+                    className="border border-border font-bold text-center bg-muted"
+                    style={{ width: `${100 / (sortedTimeSlots.length + 1)}%`, minWidth: "100px" }}
                   >
                     {slot.id}
                   </TableHead>
@@ -64,7 +75,7 @@ const TimetableDisplay = ({ timetable, weekdays = [], timeSlots = [], section }:
               {weekdays.map((day) => (
                 <TableRow key={day}>
                   <TableCell className="font-medium border border-border bg-muted/50">{day}</TableCell>
-                  {timeSlots.map((slot) => {
+                  {sortedTimeSlots.map((slot) => {
                     const events = timetable[day]?.[slot.id] || [];
                     return (
                       <TableCell key={slot.id} className="border border-border text-center">
@@ -86,11 +97,11 @@ const TimetableDisplay = ({ timetable, weekdays = [], timeSlots = [], section }:
           {/* Professor Table */}
           <div className="mt-8 mb-4">
             <h3 className="text-lg font-semibold mb-3">Professors Names</h3>
-            <Table className="border-collapse border border-border">
+            <Table className="border-collapse border border-border w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="border border-border font-bold bg-muted">Professor</TableHead>
                   <TableHead className="border border-border font-bold bg-muted">Courses</TableHead>
+                  <TableHead className="border border-border font-bold bg-muted">Professor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -98,23 +109,26 @@ const TimetableDisplay = ({ timetable, weekdays = [], timeSlots = [], section }:
                   // Get unique course-professor pairs from this section's timetable
                   const courseProfessorMap = new Map<string, Set<string>>();
                   
-                  // Extract all course-professor pairs from the timetable
+                  // Extract all course-professor pairs but organize by course instead
+                  const courseToProf = new Map<string, Set<string>>();
+                  
                   Object.values(timetable).forEach(daySlots => {
                     Object.values(daySlots).forEach(events => {
                       events.forEach(event => {
-                        if (!courseProfessorMap.has(event.Professor)) {
-                          courseProfessorMap.set(event.Professor, new Set());
+                        if (!courseToProf.has(event.Course)) {
+                          courseToProf.set(event.Course, new Set());
                         }
-                        courseProfessorMap.get(event.Professor)?.add(event.Course);
+                        courseToProf.get(event.Course)?.add(event.Professor);
                       });
                     });
                   });
-
-                  return Array.from(courseProfessorMap.entries()).map(([professor, courses], index) => (
+                  
+                  // Map courses to professors
+                  return Array.from(courseToProf.entries()).map(([course, professors], index) => (
                     <TableRow key={index}>
-                      <TableCell className="border border-border">{professor}</TableCell>
+                      <TableCell className="border border-border">{course}</TableCell>
                       <TableCell className="border border-border">
-                        {Array.from(courses).join(", ")}
+                        {Array.from(professors).join(", ")}
                       </TableCell>
                     </TableRow>
                   ));

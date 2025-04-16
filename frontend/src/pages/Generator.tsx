@@ -85,7 +85,7 @@ const Generator = () => {
           {error && <p className="text-center text-red-500 mt-4">{error}</p>}
           
           {timetables && formData && activeSection && (
-            <div className="mt-12">
+            <div className="mt-12 w-full max-w-[1280px] mx-auto"> {/* Increased max width */}
               {/* Section Selector */}
               <div className="mb-6">
                 <h2 className="text-xl font-semibold mb-2">Select Section:</h2>
@@ -150,6 +150,15 @@ const Generator = () => {
                       className="hover:text-primary transition-colors"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-linkedin"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect width="4" height="12" x="2" y="9"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                      {/* <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 20 20" viewBox="0 0 20 20" id="linkedin">
+                        <path id="Layer_2" d="M90.479,2.513c-14.611-0.041-68.502,0.028-80.958,0C5.645,2.513,2.5,5.562,2.5,9.317v81.381
+                          c0,3.756,3.145,6.802,7.021,6.802h80.958c3.878,0,7.021-3.046,7.021-6.803V9.317C97.5,5.562,94.357,2.513,90.479,2.513z
+                          M31.371,82.005H17.154V39.241H31.37v24.22C31.376,67.888,31.368,77.514,31.371,82.005z M24.265,33.404
+                          c-4.789,0.051-7.959-3.252-7.949-7.388c-0.014-9.787,15.95-9.897,15.991,0.001C32.307,30.12,29.221,33.404,24.265,33.404z
+                          M82.631,82.005H68.417V59.13c0-5.749-2.059-9.67-7.201-9.67c-5.279,0.184-7.902,4.279-7.762,8.667c0,0,0,23.879,0,23.879
+                          l-14.215,0.001c0,0,0.187-38.752,0.001-42.763h14.215l-0.095,6.2c1.871-2.919,5.239-7.204,12.907-7.204
+                          c9.352,0,16.365,6.112,16.365,19.247V82.005z"></path>
+                      </svg> */}
                     </a>
                   </div>
                 </div>
@@ -173,6 +182,15 @@ const Generator = () => {
                       className="hover:text-primary transition-colors"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-linkedin"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect width="4" height="12" x="2" y="9"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                      {/* <svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 20 20" viewBox="0 0 20 20" id="linkedin">
+                        <path id="Layer_2" d="M90.479,2.513c-14.611-0.041-68.502,0.028-80.958,0C5.645,2.513,2.5,5.562,2.5,9.317v81.381
+                          c0,3.756,3.145,6.802,7.021,6.802h80.958c3.878,0,7.021-3.046,7.021-6.803V9.317C97.5,5.562,94.357,2.513,90.479,2.513z
+                          M31.371,82.005H17.154V39.241H31.37v24.22C31.376,67.888,31.368,77.514,31.371,82.005z M24.265,33.404
+                          c-4.789,0.051-7.959-3.252-7.949-7.388c-0.014-9.787,15.95-9.897,15.991,0.001C32.307,30.12,29.221,33.404,24.265,33.404z
+                          M82.631,82.005H68.417V59.13c0-5.749-2.059-9.67-7.201-9.67c-5.279,0.184-7.902,4.279-7.762,8.667c0,0,0,23.879,0,23.879
+                          l-14.215,0.001c0,0,0.187-38.752,0.001-42.763h14.215l-0.095,6.2c1.871-2.919,5.239-7.204,12.907-7.204
+                          c9.352,0,16.365,6.112,16.365,19.247V82.005z"></path>
+                      </svg> */}
                     </a>
                   </div>
                 </div>
@@ -181,7 +199,7 @@ const Generator = () => {
             
             {/* Faculty Advisor */}
             <div className="mt-2 text-sm text-center">
-              <p>Under the guidance of <span className="font-medium">Dr. Sudharshan Babu</span></p>
+            <p>Under the guidance of <span className="font-medium"><a href="https://www.linkedin.com/in/sudharshan-babu-iitk/" target="_blank">Dr. Sudharshan Babu</a></span></p>
             </div>
             <p className="text-muted-foreground">
                 © {new Date().getFullYear()} TimetableGen • All rights reserved
